@@ -1,0 +1,79 @@
+{
+  "entities": {
+    "Game": {
+      "title": "Game",
+      "description": "Represents a Tic-Tac-Toe match session.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier of the game.", "maxLength": 128 },
+        "code": { "type": "string", "description": "Short 6-character code for sharing and joining.", "maxLength": 10, "pattern": "^[A-Z0-9]+$" },
+        "hostId": { "type": "string", "description": "User ID of the player who created the game.", "maxLength": 128 },
+        "hostName": { "type": "string", "description": "Display name of the host.", "maxLength": 100 },
+        "hostPhoto": { "type": "string", "description": "Avatar URL of the host.", "maxLength": 500 },
+        "hostSymbol": { "type": "string", "description": "Symbol assigned to host (X or O).", "enum": ["X", "O"] },
+        "opponentId": { "type": "string", "description": "User ID of the opponent or 'ai'.", "maxLength": 128 },
+        "opponentName": { "type": "string", "description": "Display name of the opponent.", "maxLength": 100 },
+        "opponentPhoto": { "type": "string", "description": "Avatar URL of the opponent.", "maxLength": 500 },
+        "gameMode": { "type": "string", "description": "Match game mode.", "enum": ["ai", "multiplayer"] },
+        "aiDifficulty": { "type": "string", "description": "Difficulty when playing against AI.", "enum": ["easy", "medium", "unbeatable"] },
+        "status": { "type": "string", "description": "Current lifecycle status of the match.", "enum": ["waiting", "in_progress", "completed", "abandoned"] },
+        "winner": { "type": "string", "description": "Winning mark or draw, or null if ongoing.", "enum": ["X", "O", "draw", "none"] },
+        "currentTurn": { "type": "string", "description": "Current player whose turn it is.", "enum": ["X", "O"] },
+        "turnCount": { "type": "number", "description": "Number of moves played so far." },
+        "board": { "type": "array", "description": "Current 9-cell board state." },
+        "createdAt": { "type": "string", "description": "Timestamp when the match was created." },
+        "updatedAt": { "type": "string", "description": "Timestamp when the match was last updated." }
+      },
+      "required": ["id", "code", "hostId", "hostName", "hostSymbol", "gameMode", "status", "currentTurn", "turnCount", "board"]
+    },
+    "GameEvent": {
+      "title": "GameEvent",
+      "description": "Event sourcing log document representing a move, rollback, or state change.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique event identifier.", "maxLength": 128 },
+        "gameId": { "type": "string", "description": "Identifier of the parent game.", "maxLength": 128 },
+        "turnIndex": { "type": "number", "description": "Sequential turn index number." },
+        "type": { "type": "string", "description": "Event type.", "enum": ["MOVE", "ROLLBACK", "RESET"] },
+        "player": { "type": "string", "description": "Player mark for this action.", "enum": ["X", "O"] },
+        "playerId": { "type": "string", "description": "UID of the player or 'ai'.", "maxLength": 128 },
+        "playerName": { "type": "string", "description": "Name of the player performing the turn.", "maxLength": 100 },
+        "cellIndex": { "type": "number", "description": "Index of the cell on the board (0-8) for moves." },
+        "targetTurnIndex": { "type": "number", "description": "Target turn index if rolling back." },
+        "resultingBoard": { "type": "array", "description": "Board array state after this event." },
+        "timestamp": { "type": "string", "description": "Timestamp of the event." },
+        "note": { "type": "string", "description": "Optional human-readable note for event inspection.", "maxLength": 200 }
+      },
+      "required": ["id", "gameId", "turnIndex", "type", "player", "playerId", "resultingBoard"]
+    },
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Public profile tracking match statistics.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "Unique user identifier.", "maxLength": 128 },
+        "displayName": { "type": "string", "description": "Public display name.", "maxLength": 100 },
+        "photoURL": { "type": "string", "description": "Avatar image URL.", "maxLength": 500 },
+        "wins": { "type": "number", "description": "Total wins recorded." },
+        "losses": { "type": "number", "description": "Total losses recorded." },
+        "draws": { "type": "number", "description": "Total draws recorded." },
+        "updatedAt": { "type": "string", "description": "Last updated timestamp." }
+      },
+      "required": ["userId", "displayName", "wins", "losses", "draws"]
+    }
+  },
+  "firestore": {
+    "/games/{gameId}": {
+      "schema": "Game",
+      "description": "Stores top-level game documents."
+    },
+    "/games/{gameId}/events/{eventId}": {
+      "schema": "GameEvent",
+      "description": "Event log subcollection for event sourcing."
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document."
+    }
+  }
+}

@@ -1,0 +1,77 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net - Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_-]+$');
+    }
+
+    // Match games collection (supports both Google signed-in users and guest players)
+    match /games/{gameId} {
+      allow get: if isValidId(gameId);
+      allow list: if true;
+
+      allow create: if isValidId(gameId)
+        && incoming().hostId is string && incoming().hostId.size() <= 128
+        && incoming().code is string && incoming().code.size() <= 10
+        && incoming().hostName is string && incoming().hostName.size() <= 100
+        && incoming().status in ['waiting', 'in_progress', 'completed', 'abandoned']
+        && (incoming().get('winner', null) == null || incoming().winner in ['X', 'O', 'draw', 'none'])
+        && incoming().currentTurn in ['X', 'O']
+        && incoming().board is list && incoming().board.size() == 9;
+
+      allow update: if isValidId(gameId)
+        && incoming().hostId is string
+        && incoming().status in ['waiting', 'in_progress', 'completed', 'abandoned'];
+
+      allow delete: if isValidId(gameId)
+        && (
+          (isSignedIn() && existing().hostId == request.auth.uid)
+          || existing().hostId is string
+        );
+
+      // Event Sourcing subcollection
+      match /events/{eventId} {
+        allow get: if isValidId(gameId) && isValidId(eventId);
+        allow list: if isValidId(gameId);
+
+        allow create: if isValidId(gameId) && isValidId(eventId)
+          && incoming().turnIndex is number
+          && incoming().type in ['MOVE', 'ROLLBACK', 'RESET']
+          && incoming().player in ['X', 'O']
+          && incoming().playerId is string && incoming().playerId.size() <= 128
+          && incoming().resultingBoard is list && incoming().resultingBoard.size() == 9;
+
+        allow update, delete: if isValidId(gameId) && isValidId(eventId);
+      }
+    }
+
+    // User profiles for authenticated users
+    match /users/{userId} {
+      allow get: if isValidId(userId);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow create, update: if isValidId(userId) && isSignedIn()
+        && request.auth.uid == userId
+        && incoming().userId == request.auth.uid;
+      allow delete: if isValidId(userId) && isSignedIn() && request.auth.uid == userId;
+    }
+  }
+}

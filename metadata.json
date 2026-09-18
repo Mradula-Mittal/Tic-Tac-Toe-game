@@ -1,0 +1,6 @@
+{
+  "name": "Tic-Tac-Toe",
+  "description": "Turn-based Tic-Tac-Toe with Firebase backend, Google Sign-In, Minimax AI, real-time multiplayer with shareable game codes, and event-sourced move replay and rollback.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
